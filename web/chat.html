@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    /* (opsional) custom warna */
+    :root {
+      --rw-primary: #00529B; /* biru BRI-ish */
+      --rw-secondary: #FF7A00;
+    }
+    .rw-conversation-container .rw-header { background: var(--rw-primary) !important; }
+    .rw-launcher { background: var(--rw-primary) !important; }
+    .rw-send { background: var(--rw-secondary) !important; }
+  </style>
+</head>
+<body>
+  <!-- Bubble akan muncul otomatis di kanan bawah -->
+
+  <script src="https://cdn.jsdelivr.net/npm/rasa-webchat/lib/index.min.js"></script>
+  <script>
+    // (opsional) injeksi user id dari native webview
+    window.__APP_USER_ID__ = window.__APP_USER_ID__ || "guest";
+
+    // init bubble
+    window.WebChat.default(
+      {
+        socketUrl: "http://localhost:5005",
+        socketPath: "/socket.io/",
+        title: "Assistant",
+        subtitle: "Online",
+        inputTextFieldHint: "Tanya sesuatu...",
+        showCloseButton: true,
+        showFullScreenButton: true,
+        initPayload: "/greet",
+        customData: { language: "id", user_id: window.__APP_USER_ID__ },
+        params: { storage: "session" }, // atau "local" jika ingin persist
+      },
+      null
+    );
+
+    // simpan referensi utk kendali dari native
+    window.__chatOpen = () => document.querySelector(".rw-launcher")?.click();
+    window.__chatClose = () => document.querySelector(".rw-close-button")?.click();
+  </script>
+</body>
+</html>

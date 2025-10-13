@@ -9,7 +9,7 @@ intents:
   - mood_unhappy
   - bot_challenge
   - tanya_limit_transfer
-  - ask_kb 
+  - query_kb 
 
 responses:
   utter_greet:

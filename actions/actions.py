@@ -226,6 +226,11 @@ class ActionRetrieveTop1(Action):
 
         try:
             results = _kb.search(q, top_k=ENV_TOPK)
+
+            # >>> DEBUG di sini
+            print(f"[DBG] query={q!r} results={results[:1]}")
+            # <<<
+            
         except Exception as exc:
             dispatcher.utter_message(text=f"Gagal melakukan pencarian: {exc}")
             return []

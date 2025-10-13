@@ -27,7 +27,7 @@ rules:
 #   - intent: greet
 #   - action: action_sapa
 
-- rule: ask_kb → retrieval top1
+- rule: kb retrieval on query_kb
   steps:
-  - intent: ask_kb
+  - intent: query_kb
   - action: action_retrieve_top1

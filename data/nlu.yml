@@ -95,7 +95,7 @@ nlu:
 #     - berapa limit transfer harian?
 #     - batas maksimal transfer saya?
 
-- intent: ask_kb
+- intent: query_kb
   examples: |
     - berapa limit transfer harian?
     - berapa batas maksimal transfer?

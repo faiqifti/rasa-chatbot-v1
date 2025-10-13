@@ -55,7 +55,7 @@ version: "3.1"
 pipeline:
 - name: WhitespaceTokenizer
 - name: RegexFeaturizer
-- name: CountVectorsFeaturizer
+- name: LexicalSyntacticFeaturizer
 - name: CountVectorsFeaturizer
   analyzer: char_wb
   min_ngram: 1
