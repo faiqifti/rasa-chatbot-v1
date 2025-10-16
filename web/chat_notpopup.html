@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --rw-primary: #00529B;
+      --rw-secondary: #FF7A00;
+    }
+    .chat-container {
+      max-width: 400px;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 20px;
+    }
+    #chat-messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    #user-input {
+      width: 70%;
+      padding: 8px;
+    }
+    button {
+      padding: 8px 15px;
+      background: var(--rw-primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <h3>Assistant</h3>
+    <div id="chat-messages"></div>
+    <div>
+      <input type="text" id="user-input" placeholder="Tanya sesuatu...">
+      <button onclick="sendMessage()">Kirim</button>
+    </div>
+  </div>
+
+  <script>
+    const chatMessages = document.getElementById('chat-messages');
+    const userInput = document.getElementById('user-input');
+
+    function addMessage(sender, text) {
+      const messageDiv = document.createElement('div');
+      messageDiv.innerHTML = `<strong>${sender}:</strong> ${text}`;
+      messageDiv.style.marginBottom = '10px';
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage('You', message);
+      userInput.value = '';
+
+      try {
+        const response = await fetch('http://localhost:5005/webhooks/rest/webhook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender: 'user',
+            message: message
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          data.forEach(msg => {
+            addMessage('Bot', msg.text);
+          });
+        } else {
+          addMessage('Bot', 'Maaf, tidak ada respons.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        addMessage('Bot', 'Error: Tidak dapat terhubung ke server.');
+      }
+    }
+
+    // Send message on Enter key
+    userInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Send initial greeting
+    setTimeout(() => {
+      addMessage('Bot', 'Halo! Ada yang bisa saya bantu?');
+    }, 500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Assistant (Rasa REST)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --primary:#00529B; --secondary:#FF7A00; --muted:#e5e7eb; --shadow:0 10px 30px rgba(0,0,0,.15); }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 0; background: #f8fafc; color: #0f172a; }
+
+    /* Launcher */
+    .chat-launcher {
+      position: fixed; right: 24px; bottom: 24px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--primary); color: #fff; border: none; cursor: pointer;
+      display: grid; place-items: center; box-shadow: var(--shadow);
+    }
+    .chat-launcher svg { width: 26px; height: 26px; }
+
+    /* Popup */
+    .chat-popup {
+      position: fixed; right: 24px; bottom: 92px; width: 360px; max-height: 70vh;
+      background: #fff; border-radius: 16px; box-shadow: var(--shadow);
+      border: 1px solid var(--muted); display: none; overflow: hidden;
+      grid-template-rows: auto 1fr auto;
+    }
+    .chat-popup.open { display: grid; }
+    .chat-header {
+      display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+      background: var(--primary); color: #fff;
+    }
+    .chat-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    .chat-header button { margin-left: auto; background: transparent; border: none; color: #fff; cursor: pointer; }
+
+    #messages { padding: 12px; overflow-y: auto; background: #f9fafb; border-top: 1px solid var(--muted); }
+    .row { margin: 8px 0; display: flex; gap: 8px; }
+    .row.you { justify-content: flex-end; }
+    .bubble {
+      max-width: 75%; padding: 10px 12px; border-radius: 12px; line-height: 1.35;
+      background: #fff; border: 1px solid var(--muted); white-space: pre-wrap;
+    }
+    .you .bubble { background: #e6f0ff; border-color: #c7dcff; }
+    .bot .bubble img { max-width: 100%; border-radius: 10px; display: block; }
+
+    .quick-replies { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .qr {
+      background: #fff; border: 1px solid var(--muted); border-radius: 999px;
+      padding: 6px 10px; font-size: 12px; cursor: pointer;
+    }
+
+    .footer { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--muted); background: #fff; }
+    #input { flex: 1; padding: 10px 12px; border: 1px solid var(--muted); border-radius: 10px; outline: none; }
+    #send { padding: 10px 14px; background: var(--secondary); color: #fff; border: none; border-radius: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- Launcher -->
+  <button id="launcher" class="chat-launcher" aria-label="Buka chat">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8l-4 3V5z"
+            stroke="currentColor" stroke-width="1.8"/>
+    </svg>
+  </button>
+
+  <!-- Popup -->
+  <section id="popup" class="chat-popup" role="dialog" aria-modal="true" aria-labelledby="title">
+    <header class="chat-header">
+      <h3 id="title">Assistant</h3>
+      <button id="close" title="Tutup (Esc)">✕</button>
+    </header>
+    <div id="messages" aria-live="polite"></div>
+    <div class="footer">
+      <input id="input" type="text" placeholder="Tanya sesuatu..." autocomplete="off" />
+      <button id="send">Kirim</button>
+    </div>
+  </section>
+
+  <script>
+    // === CONFIG: Rasa REST webhook ===
+    const RASA_REST_URL = 'http://localhost:5005/webhooks/rest/webhook';
+
+    // Stable sender id per browser (so Rasa tracker persists)
+    function getSenderId() {
+      const k = 'rasa_sender_id';
+      let id = localStorage.getItem(k);
+      if (!id) { id = 'web-' + Math.random().toString(36).slice(2, 10); localStorage.setItem(k, id); }
+      return id;
+    }
+    const SENDER_ID = getSenderId();
+    // NEW: Define a key for storing chat history, tied to the sender ID
+    const HISTORY_KEY = `rasa_chat_history_${SENDER_ID}`;
+
+    // UI refs
+    const launcher = document.getElementById('launcher');
+    const popup    = document.getElementById('popup');
+    const closeBtn = document.getElementById('close');
+    const messages = document.getElementById('messages');
+    const inputEl  = document.getElementById('input');
+    const sendBtn  = document.getElementById('send');
+
+    launcher.addEventListener('click', () => { popup.classList.add('open'); inputEl.focus(); });
+    closeBtn.addEventListener('click', () => popup.classList.remove('open'));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') popup.classList.remove('open'); });
+
+    // --- NEW: Functions to save and load chat history ---
+    function saveMessage(message) {
+        let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+        history.push(message);
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+
+    function loadHistory() {
+        const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+        history.forEach(message => {
+            if (message.type === 'user') {
+                _renderUserMessage(message.text);
+            } else if (message.type === 'bot') {
+                _renderBotMessage(message.payload);
+            }
+        });
+    }
+
+    // --- MODIFIED: Message rendering functions are split into rendering and saving ---
+    function _renderUserMessage(text) {
+      const row = document.createElement('div'); row.className = 'row you';
+      const b = document.createElement('div'); b.className = 'bubble'; b.textContent = text;
+      row.appendChild(b); messages.appendChild(row); messages.scrollTop = messages.scrollHeight;
+    }
+
+    function _renderBotMessage(payload) {
+      const row = document.createElement('div'); row.className = 'row bot';
+      const b = document.createElement('div'); b.className = 'bubble';
+      let hasAny = false;
+      if (payload.text) {
+        const p = document.createElement('div'); p.textContent = payload.text; b.appendChild(p);
+        hasAny = true;
+      }
+      if (payload.image) {
+        const img = document.createElement('img'); img.src = payload.image; img.alt = 'image';
+        b.appendChild(img); hasAny = true;
+      }
+      if (Array.isArray(payload.buttons) && payload.buttons.length) {
+        const wrap = document.createElement('div'); wrap.className = 'quick-replies';
+        payload.buttons.forEach(btn => {
+          const el = document.createElement('button');
+          el.className = 'qr';
+          el.textContent = btn.title || btn.payload || 'Pilih';
+          el.addEventListener('click', () => {
+            const msg = btn.payload || btn.title;
+            inputEl.value = msg; sendMessage();
+          });
+          wrap.appendChild(el);
+        });
+        b.appendChild(wrap); hasAny = true;
+      }
+      if (!hasAny) { b.textContent = '[Respons diterima]'; }
+      row.appendChild(b); messages.appendChild(row); messages.scrollTop = messages.scrollHeight;
+    }
+
+    // These public functions now also save the message to history
+    function addUser(text) {
+        _renderUserMessage(text);
+        saveMessage({ type: 'user', text: text });
+    }
+
+    function addBot(payload) {
+        _renderBotMessage(payload);
+        saveMessage({ type: 'bot', payload: payload });
+    }
+
+    async function callRasa(message) {
+      const res = await fetch(RASA_REST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify({ sender: SENDER_ID, message })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      addUser(text);
+      inputEl.value = '';
+      try {
+        const data = await callRasa(text);
+        if (Array.isArray(data) && data.length) {
+          data.forEach(addBot);
+        } else {
+          addBot({ text: 'Maaf, tidak ada respons.' });
+        }
+      } catch (e) {
+        console.error(e);
+        addBot({ text: 'Gagal menghubungkan ke Rasa. Pastikan server berjalan dan CORS aktif.' });
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    
+    // --- NEW: Load chat history when the page loads ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadHistory();
+    });
+
+    // Optional: greet on open (client-side), but only if history is empty
+    let greeted = false;
+    const ob = new MutationObserver(() => {
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+      if (popup.classList.contains('open') && !greeted && history.length === 0) {
+        greeted = true; setTimeout(() => addBot({ text: 'Halo! Ada yang bisa saya bantu?' }), 150);
+      }
+    });
+    ob.observe(popup, { attributes: true, attributeFilter: ['class'] });
+  </script>
+</body>
+</html>

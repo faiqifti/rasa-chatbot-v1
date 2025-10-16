@@ -95,10 +95,32 @@ nlu:
 #     - berapa limit transfer harian?
 #     - batas maksimal transfer saya?
 
-- intent: query_kb
+# - intent: query_kb
+#   examples: |
+#     - berapa limit transfer harian?
+#     - berapa batas maksimal transfer?
+#     - biaya administrasi per bulan berapa?
+#     - bagaimana cara memblokir kartu atm?
+#     - kartu saya hilang, apa yang harus dilakukan?
+
+- intent: query_simpanan_kb
   examples: |
-    - berapa limit transfer harian?
-    - berapa batas maksimal transfer?
-    - biaya administrasi per bulan berapa?
-    - bagaimana cara memblokir kartu atm?
-    - kartu saya hilang, apa yang harus dilakukan?
+    - berapa suku bunga tabungan simpanan plus?
+    - biaya admin produk tabunganku berapa ya?
+    - limit transfer harian berapa
+    - info dong tentang tabungan
+
+- intent: query_pinjaman_kb
+  examples: |
+    - syarat pengajuan KTA apa saja?
+    - bunga KPR sekarang berapa
+    - saya mau pinjam uang untuk usaha
+    - bagaimana cara mengajukan kredit
+
+- intent: query_kartu_kredit_kb
+  examples: |
+    - berapa iuran tahunan kartu kredit gold?
+    - bagaimana cara memblokir kartu kredit yang hilang?
+    - apa kelebihan kartu kredit platinum?
+    - info tentang kartu kredit
+    - apa reward kartu kredit platinum?

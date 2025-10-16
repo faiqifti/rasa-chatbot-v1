@@ -9,7 +9,10 @@ intents:
   - mood_unhappy
   - bot_challenge
   - tanya_limit_transfer
-  - query_kb 
+  - query_simpanan_kb  # Intent untuk semua pertanyaan terkait simpanan
+  - query_pinjaman_kb  # Intent untuk semua pertanyaan terkait pinjaman
+  - query_kartu_kredit_kb # Intent untuk semua pertanyaan terkait kartu kredit
+  # - query_kb 
 
 responses:
   utter_greet:

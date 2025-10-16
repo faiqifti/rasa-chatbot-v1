@@ -27,7 +27,22 @@ rules:
 #   - intent: greet
 #   - action: action_sapa
 
-- rule: kb retrieval on query_kb
+# - rule: kb retrieval on query_kb
+#   steps:
+#   - intent: query_kb
+#   - action: action_retrieve_top1
+
+- rule: Handle simpanan knowledge query
   steps:
-  - intent: query_kb
+  - intent: query_simpanan_kb
+  - action: action_retrieve_top1
+
+- rule: Handle pinjaman knowledge query
+  steps:
+  - intent: query_pinjaman_kb
+  - action: action_retrieve_top1
+
+- rule: Handle kartu kredit knowledge query
+  steps:
+  - intent: query_kartu_kredit_kb
   - action: action_retrieve_top1

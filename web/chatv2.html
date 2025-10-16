@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --rw-primary:#00529B; --rw-secondary:#FF7A00; }
+    .rw-conversation-container .rw-header { background: var(--rw-primary) !important; }
+    .rw-launcher { background: var(--rw-primary) !important; }
+    .rw-send { background: var(--rw-secondary) !important; }
+
+    /* size & position for embedded box */
+    #rasa-webchat { position: fixed; right: 12px; bottom: 12px; width: 380px; max-width: 95vw; z-index: 2147483000; }
+  </style>
+</head>
+<body>
+  <div id="rasa-webchat"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/rasa-webchat@1/lib/index.min.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      const onSocketEvent = {
+        connect: () => console.log('OK connect'),
+        session_confirm: (e) => console.log('OK session_confirm', e),
+        user_uttered: (e) => console.log('SEND user_uttered', e),
+        bot_uttered: (e) => console.log('RECV bot_uttered', e),
+        error: (e) => console.error('socket error', e),
+        connect_error: (e) => console.error('connect_error', e),
+      };
+
+      // Inline render: no need to call api.open()
+      window.WebChat.default({
+        socketUrl: "http://localhost:5005",
+        socketPath: "/socket.io",
+        title: "Assistant",
+        subtitle: "Online",
+        inputTextFieldHint: "Tanya sesuatu...",
+        showCloseButton: true,
+        showFullScreenButton: false,
+        initPayload: "/greet",
+        customData: { language: "id", user_id: "guest" },
+        params: { storage: "session" },
+        onSocketEvent,
+        embedded: true
+      }, document.getElementById('rasa-webchat'));
+
+      // Manual ping via Socket.IO (bypasses widget API differences)
+      window.__ping = (text="halo") => {
+        try {
+          const s = window.io("http://localhost:5005", { path: "/socket.io", transports: ["websocket"] });
+          s.on("connect", () => {
+            console.log("manual io: connected");
+            s.emit("user_uttered", { message: text, metadata: {} });
+          });
+          s.on("bot_uttered", (m) => console.log("manual io: bot_uttered", m));
+          s.on("connect_error", (e) => console.error("manual io: connect_error", e));
+        } catch (e) {
+          console.error("__ping failed", e);
+        }
+      };
+    });
+  </script>
+</body>
+</html>
